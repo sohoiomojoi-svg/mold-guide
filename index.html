@@ -374,15 +374,25 @@ function applyMeas(C,B){if(!measOn())return;const ZC=Object.fromEntries(C.Z.map(
     zb.t=m.t;zb.r=m.r;zb.p=m.r/100*ps(m.t);zb.z=zc.z=null;zb.meas=true;
     zc.t=m.t+dt;zc.r=Math.max(0,Math.min(100,m.r+dr));zc.p=zc.r/100*ps(zc.t);zc.meas=true;}
   C.Z.forEach(z=>z.z=zc(z.r));B.Z.forEach(z=>z.z=zc(z.r));}
-function durHours(MM){if(measOn()||typeof CLIM_ON==='undefined'||!CLIM_ON)return null;const c=CLIM[SEA];const sv={T:Q.T,R:Q.R};
-  let amp=(c.max-c.min)/2*(coastOn()?0.8:1),mean=c.mean,e=c.e*(coastOn()?1.05:1),R=null;if(WX==='sun'){amp*=1.3;mean+=0.1}else if(WX==='cloud'){amp*=0.5;e*=1.03}else if(WX==='rain'){amp*=0.2;mean-=1.2;R=90}
-  const H={room:0,ceil:0,wall:0,floor:0,S:{out:[],room:[],ceil:[],wall:[],floor:[]},AC:[]};
-  for(let h=0;h<24;h++){const T=mean+amp*Math.cos(2*Math.PI*(h-14)/24);Q.T=T;Q.R=Math.min(97,R!=null?R:e/ps(T)*100);window.__HOUR=h;const C=f3calc(MM);H.S.out.push(Q.R);H.AC.push(C.coolOn);C.Z.forEach(z=>{H.S[z.k].push(z.r);if(z.r>=80)H[z.k]++})}
-  window.__HOUR=null;Q.T=sv.T;Q.R=sv.R;return H}
+const HRMAP={am:7,day:14,pm:21};
+function diur(h){const c=CLIM[SEA];const cf=coastOn()?0.8:1;let amp=(c.max-c.min)/2*cf,mean=(c.max+c.min)/2,e=c.e*(coastOn()?1.05:1),R=null;
+  if(WX==='sun'){amp*=1.3;mean+=0.1}else if(WX==='cloud'){amp*=0.5;e*=1.03}else if(WX==='rain'){amp*=0.2;mean=c.mean-1.2;R=90}
+  let T;if(h>=6&&h<=14)T=mean-amp*Math.cos(Math.PI*(h-6)/8);else{const t=((h-14+24)%24)/16;T=mean+amp*Math.cos(Math.PI*t)}
+  return{T,R:Math.min(97,R!=null?R:e/ps(T)*100)}}
+function simDay(MM){const sv={T:Q.T,R:Q.R};const TAU={room:1,ceil:3,wall:4,floor:6};const st={};
+  const o={T:{},P:{},R:{},AC:[],out:[]};['room','ceil','wall','floor'].forEach(k=>{o.T[k]=[];o.P[k]=[];o.R[k]=[]});
+  for(let cyc=0;cyc<2;cyc++)for(let h=0;h<24;h++){const d=diur(h);Q.T=d.T;Q.R=d.R;window.__HOUR=h;const C=f3calc(MM);
+    C.Z.forEach(z=>{st[z.k]=(st[z.k]==null)?z.t:st[z.k]+(z.t-st[z.k])*(1-Math.exp(-1/TAU[z.k]));
+      if(cyc===1){const t=st[z.k];o.T[z.k].push(t);o.P[z.k].push(z.p);o.R[z.k].push(z.p/ps(t)*100)}});
+    if(cyc===1){o.AC.push(C.coolOn);o.out.push(Q.R)}}
+  window.__HOUR=null;Q.T=sv.T;Q.R=sv.R;return o}
 function f3draw(){
   const MM=f3M(),anyM=Object.values(MM).some(Boolean);
   if(measOn()){const mo=mVal('out');if(mo){Q.T=mo.t;Q.R=Math.round(mo.r);CLIM_ON=false;}}
-  const C=f3calc(MM),B=f3calc({});applyMeas(C,B);const DH=durHours(MM);window.__DH=DH;const Z=Object.fromEntries(C.Z.map(z=>[z.k,z])),ZB=Object.fromEntries(B.Z.map(z=>[z.k,z]));
+  const C=f3calc(MM),B=f3calc({});applyMeas(C,B);
+  const SIM=(!measOn()&&typeof CLIM_ON!=='undefined'&&CLIM_ON)?simDay(MM):null,SIMB=SIM?(anyM?simDay({}):SIM):null;
+  if(SIM){const hi=HRMAP[TIM];const ov=(X,S)=>X.Z.forEach(z=>{z.t=S.T[z.k][hi];z.p=S.P[z.k][hi];z.r=S.R[z.k][hi];z.z=zc(z.r)});ov(C,SIM);ov(B,SIMB);}
+  const DH=SIM?(()=>{const H={S:{out:SIM.out},AC:SIM.AC};['room','ceil','wall','floor'].forEach(k=>{H.S[k]=SIM.R[k];H[k]=SIM.R[k].filter(r=>r>=80).length});return H})():null;window.__DH=DH;window.__CD=C;window.__BD=B;const Z=Object.fromEntries(C.Z.map(z=>[z.k,z])),ZB=Object.fromEntries(B.Z.map(z=>[z.k,z]));
   const RED='#C0392B',PUR='#7B3FA0',COLD='#33B5E5',ARW='#8FA3A8';
   const T=(x,y,t,o={})=>`<text x="${x}" y="${y}" font-size="${o.s||27}" font-weight="${o.b?700:400}" text-anchor="${o.a||'middle'}" fill="${o.c||'#1D2B30'}"${o.nb?' class="nb"':''}>${t}</text>`;
   const L=(x1,y1,x2,y2,o={})=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${o.c||'#1D2B30'}" stroke-width="${o.w||2.5}"${o.d?` stroke-dasharray="${o.d}"`:''}/>`;
@@ -428,7 +438,7 @@ function f3draw(){
   // outdoor air (humidity)
   if(measOn()){s+=`<rect x="1626" y="414" width="196" height="186" rx="12" fill="#fff" opacity=".92"/>`+T(1724,456,'実測値で判定',{s:22,b:1,c:'#0F7C8C'})+T(1724,500,($('mdt').value||'測定日時 未入力').slice(0,16),{s:18,b:1})+T(1724,536,($('mloc').value||'').slice(0,12),{s:16})+T(1724,578,'空欄は計算値',{s:15,c:'#566569'});}
   else if(typeof CLIM_ON!=='undefined'&&CLIM_ON){const MN={4:'4月（春）',7:'7月（夏）',10:'10月（秋）',1:'1月（冬）'},TN={am:'朝',day:'日中',pm:'夜'};
-    s+=`<rect x="1626" y="414" width="196" height="186" rx="12" fill="#fff" opacity=".92"/>`+T(1724,452,'沖縄本島',{s:20,c:'#3E4C59'})+T(1724,500,MN[SEA],{s:28,b:1})+T(1724,546,TN[TIM]+'・'+WXN[WX].replace('（平均）',''),{s:26,b:1})+T(1724,580,'那覇平年値の目安',{s:15,c:'#566569'});}
+    s+=`<rect x="1626" y="414" width="196" height="186" rx="12" fill="#fff" opacity=".92"/>`+T(1724,452,'沖縄本島',{s:20,c:'#3E4C59'})+T(1724,500,MN[SEA],{s:28,b:1})+T(1724,546,TN[TIM]+'・'+WXN[WX].replace('（平均）',''),{s:26,b:1})+T(1724,580,`${HRMAP[TIM]}時の値・那覇平年値の目安`,{s:15,c:'#566569'});}
   else{const MN={4:'4月（春）',7:'7月（夏）',10:'10月（秋）',1:'1月（冬）'},TN={am:'朝',day:'日中',pm:'夜'};s+=`<rect x="1626" y="414" width="196" height="186" rx="12" fill="#fff" opacity=".92"/>`+T(1724,452,'手動設定',{s:22,b:1,c:'#B35C00'})+T(1724,500,MN[SEA],{s:28,b:1})+T(1724,546,TN[TIM]+'・'+WXN[WX].replace('（平均）',''),{s:26,b:1})+T(1724,580,'外気を手動で変更',{s:15,c:'#566569'});}
   s+=T(1902,440,'外気',{s:24,b:1})+T(1902,470,`${Q.T}℃`,{s:22,b:1,c:'#A01818'})+circ(1902,518,34,Q.R,22)+T(1902,580,`露点${C.dpo.toFixed(1)}℃`,{s:20,c:'#1F5F99'})+T(1902,604,`${(622*C.po/(101.325-C.po)).toFixed(1)}g/kg`,{s:18,c:'#1F5F99'});
   {const xo=v=>622*v/(101.325-v), ms=[['1',1],['4',4],['7',7],['10',10]];
@@ -550,11 +560,8 @@ let WX='avg';const WXN={avg:'平年（平均）',sun:'快晴',cloud:'曇り',rai
 let SEA='7',TIM='day',CLIM_ON=true,ACMAN=false,ACMODE='24h';
 const ACMN={short:'0〜数時間',day:'日中のみ',night:'夜のみ','24h':'24時間'},ACMNL={short:'0〜数時間（14〜16時の約2時間と想定）',day:'日中のみ（9〜18時）',night:'夜のみ（18〜6時）','24h':'24時間'};
 const coastOn=()=>!!($('pcoast')&&$('pcoast').checked);
-function applyClim(){const c=CLIM[SEA];const cf=coastOn()?0.8:1;const base=c.mean+((TIM==='am'?c.min+0.3:TIM==='day'?c.max:c.mean-0.5)-c.mean)*cf;let T=base,e=c.e*(coastOn()?1.05:1),R=null;
-  if(WX==='sun'){T=TIM==='am'?c.min-0.5:TIM==='day'?c.max+1.0:c.mean-0.8}
-  else if(WX==='cloud'){T=c.mean+(base-c.mean)*0.5;e=c.e*1.03}
-  else if(WX==='rain'){T=c.mean-1.2+(base-c.mean)*0.2;R=TIM==='day'?88:92}
-  CLIM_ON=true;ACMAN=false;Q.T=Math.round(T*2)/2;Q.R=Math.round(Math.min(97,R!=null?R:e/ps(Q.T)*100));$('qT').value=Q.T;$('qR').value=Q.R;
+function applyClim(){const d=diur(HRMAP[TIM]);const T=d.T,R=d.R;
+  CLIM_ON=true;ACMAN=false;Q.T=Math.round(T*10)/10;Q.R=Math.round(R*10)/10;$('qT').value=Q.T;$('qR').value=Q.R;
   document.querySelectorAll('#sea button').forEach(b=>b.classList.toggle('on',b.dataset.m===SEA));document.querySelectorAll('#tim button').forEach(b=>b.classList.toggle('on',b.dataset.t===TIM));document.querySelectorAll('#wx button').forEach(b=>b.classList.toggle('on',b.dataset.w===WX));f3draw()}
 document.querySelectorAll('#sea button').forEach(b=>b.addEventListener('click',()=>{SEA=b.dataset.m;applyClim()}));
 document.querySelectorAll('#tim button').forEach(b=>b.addEventListener('click',()=>{TIM=b.dataset.t;applyClim()}));
