@@ -48,7 +48,7 @@ svg{display:block;width:100%;height:auto}
 .rep .rtab th{background:#EEF2EF;white-space:nowrap}
 .rep .zt td:nth-child(n+2){text-align:center;white-space:nowrap}
 .rep .mt td:first-child{width:38%}.rep .mt tr.on td{background:#E3F2E7;font-weight:700}
-.rep .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.rep .two{display:grid;grid-template-columns:1fr;gap:4px}
 .rep .rex{font-size:12.5px;line-height:1.55}.rep .rex span{color:#8A4B00!important}.rep .rex b{color:#1D2B30}
 .rep .rnote{font-size:11px;color:#566569;margin:3px 0 0}
 .rep .rsrc{font-size:10.5px;color:#566569;line-height:1.5;margin:10px 0 0}
@@ -60,6 +60,7 @@ svg{display:block;width:100%;height:auto}
 .minp td:first-child{white-space:nowrap}.minp td:nth-child(n+2){width:26%}
 .mnote{font-size:11px;color:#566569;margin:2px 0 6px}
 #f3list>div{align-items:center;min-width:0}#f3list{overflow:hidden}#f3list>div{gap:4px;padding-left:6px!important;padding-right:4px!important}#f3list>div>span:first-child{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1 1 0}#f3list>div{flex-wrap:wrap}#f3list>div>span.cs{flex:none}#f3list .pre{flex-basis:100%;font-size:10px;color:#566569;line-height:1.3}#f3list b{white-space:nowrap;font-size:10.5px;padding:0 4px!important}#f3list>div>span.cs{gap:3px!important}
+#f3list svg.hs{display:block;flex:none;align-self:center;width:62.4px!important;height:15px!important;margin:0!important;background:none!important;border-radius:0!important}
 .pdate{display:none}
 #lab3{position:relative}
 .src3{font-size:9.5px;line-height:1.45;color:#A9BDBE;margin:4px 0 0}
@@ -251,7 +252,7 @@ main.solo #lab3{width:auto;margin:0}
       <label><span>外気温</span><input type="range" id="qT" min="12" max="35" step="0.5" value="31"><output id="oqT"></output></label>
       <label><span>外気の湿度</span><input type="range" id="qR" min="50" max="95" step="1" value="75"><output id="oqR"></output></label>
       <label><span>冷房の設定温度</span><input type="range" id="qS" min="20" max="30" step="0.5" value="26"><output id="oqS"></output></label>
-      <div class="ro"><span>冷房の運転</span><div class="seg" id="acm" style="margin:0"><button data-a="day">日中のみ（9〜18時）</button><button data-a="24h" class="on">24時間</button></div><span></span></div>
+      <div class="ro"><span>冷房の運転</span><div class="seg" id="acm" style="margin:0"><button data-a="short">0〜数時間</button><button data-a="day">日中のみ（9〜18時）</button><button data-a="night">夜のみ（18〜6時）</button><button data-a="24h" class="on">24時間</button></div><span></span></div>
       <div class="ro"><span>外気の露点</span><span></span><output id="oqD"></output></div>
       <div class="ro"><span>外気の水蒸気量<small>（絶対湿度）</small></span><span></span><output id="oqX"></output></div>
     </div>
@@ -336,7 +337,8 @@ function f3calc(Mo){
   const man=(typeof CLIM_ON==='undefined')||!CLIM_ON;
   const run=!f2?0:(man||(typeof ACMAN!=='undefined'&&ACMAN))?1:SEA==='1'?0:(SEA==='4'||SEA==='10')?0.5:1;
   const hr=(typeof window.__HOUR==='number')?window.__HOUR:(typeof TIM!=='undefined'?(TIM==='am'?7:TIM==='pm'?21:14):14);
-  const acHour=(typeof ACMODE==='undefined'||ACMODE==='24h')||(hr>=9&&hr<18);
+  const am=(typeof ACMODE==='undefined')?'24h':ACMODE;
+  const acHour=am==='24h'||(am==='day'&&hr>=9&&hr<18)||(am==='night'&&(hr>=18||hr<6))||(am==='short'&&hr>=14&&hr<16);
   const coolOn=run>0&&acHour&&Q.T>Seff-2;
   if(coolOn){Tr=Seff+(Q.T-Seff)*(1-run)*0.6;const pac=Math.min(po,(0.63+0.1*(1-run)+((typeof WX!=='undefined'&&WX==='rain'&&!man)?0.04:0))*ps(Tr));pr=pac+(po-pac)*(via?0.15*amp*np:0.05)}else{const auto=(typeof CLIM_ON!=='undefined'&&CLIM_ON&&typeof CLIM!=='undefined');if(auto){const c=CLIM[SEA];const mn=c.mean+(WX==='sun'?0.1:WX==='rain'?-1.2:0);Tr=mn+(Q.T-mn)*0.4+0.8}else{Tr=Q.T+0.5}pr=Math.min(po+0.05,ps(Tr))}
   const lkW=(0.05+(f1&&!M.m3?conn*(pg?0.5+(f3e?0.2:0):0.05)*np:0)*amp)*(M.m1?0.5:1)*(M.m2?0.7:1);
@@ -363,6 +365,7 @@ function ramp(stops,t){t=Math.max(0,Math.min(1,t));const n=stops.length-1,i=Math
 const tCol=T=>ramp(['#FFF5F0','#FCBBA1','#FB6A4A','#CB181D'],(T-20)/15);
 const rCol=r=>ramp(['#F7FBFF','#C6DBEF','#6BAED6','#2171B5','#08306B'],(r-40)/60);
 const ink=c=>{const v=[1,3,5].map(k=>parseInt(c.slice(k,k+2),16));return(0.299*v[0]+0.587*v[1]+0.114*v[2])>150?'#1D2B30':'#fff'};
+const strip=(a,ac)=>{if(!a)return'';const w=2.6;let g='';a.forEach((r,i)=>{const c=r>=80?'#7B3FA0':rCol(Math.min(r,100));g+=`<rect x="${i*w}" y="0" width="${w-0.3}" height="12" fill="${c}"><title>${i}時 ${Math.round(Math.min(r,100))}%</title></rect>`});if(ac)ac.forEach((o,i)=>{if(o)g+=`<rect x="${i*w}" y="13" width="${w-0.3}" height="2" fill="#33B5E5"/>`});[6,12,18].forEach(h=>g+=`<line x1="${h*w-0.15}" x2="${h*w-0.15}" y1="0" y2="12" stroke="#fff" stroke-width="0.6"/>`);return`<svg class="hs" width="${24*w}" height="15" viewBox="0 0 ${24*w} 15" aria-label="24時間の相対湿度">${g}</svg>`};
 const rhT=r=>r>=100?'結露':(r<80?Math.min(Math.round(r),79):Math.round(r))+'%';
 function measOn(){const e=$('meas');return !!(e&&e.checked)}
 function mVal(k){const t=parseFloat(($('mT_'+k)||{}).value),r=parseFloat(($('mR_'+k)||{}).value);return(isFinite(t)&&isFinite(r))?{t,r:Math.max(0,Math.min(100,r))}:null}
@@ -373,8 +376,8 @@ function applyMeas(C,B){if(!measOn())return;const ZC=Object.fromEntries(C.Z.map(
   C.Z.forEach(z=>z.z=zc(z.r));B.Z.forEach(z=>z.z=zc(z.r));}
 function durHours(MM){if(measOn()||typeof CLIM_ON==='undefined'||!CLIM_ON)return null;const c=CLIM[SEA];const sv={T:Q.T,R:Q.R};
   let amp=(c.max-c.min)/2*(coastOn()?0.8:1),mean=c.mean,e=c.e*(coastOn()?1.05:1),R=null;if(WX==='sun'){amp*=1.3;mean+=0.1}else if(WX==='cloud'){amp*=0.5;e*=1.03}else if(WX==='rain'){amp*=0.2;mean-=1.2;R=90}
-  const H={room:0,ceil:0,wall:0,floor:0};
-  for(let h=0;h<24;h++){const T=mean+amp*Math.cos(2*Math.PI*(h-14)/24);Q.T=T;Q.R=Math.min(97,R!=null?R:e/ps(T)*100);window.__HOUR=h;const C=f3calc(MM);C.Z.forEach(z=>{if(z.r>=80)H[z.k]++})}
+  const H={room:0,ceil:0,wall:0,floor:0,S:{out:[],room:[],ceil:[],wall:[],floor:[]},AC:[]};
+  for(let h=0;h<24;h++){const T=mean+amp*Math.cos(2*Math.PI*(h-14)/24);Q.T=T;Q.R=Math.min(97,R!=null?R:e/ps(T)*100);window.__HOUR=h;const C=f3calc(MM);H.S.out.push(Q.R);H.AC.push(C.coolOn);C.Z.forEach(z=>{H.S[z.k].push(z.r);if(z.r>=80)H[z.k]++})}
   window.__HOUR=null;Q.T=sv.T;Q.R=sv.R;return H}
 function f3draw(){
   const MM=f3M(),anyM=Object.values(MM).some(Boolean);
@@ -450,7 +453,7 @@ function f3draw(){
   if(C.coolOn){
     const A=[[940,862,124,15],[1110,840,72,-5],[1240,826,72,-15],[1345,786,72,-35],[1424,716,72,-40],[1100,922,72,20],[1216,964,72,20],[1322,996,72,20],[1424,1030,72,20],[1012,978,72,42],[1085,1060,72,52]];
     const sc=(0.8+0.4*kc)*(0.7+0.3*C.run);s+=`<g opacity="${(0.45+0.55*C.run).toFixed(2)}">`+A.map(([x,y,l,a],i)=>arrowPoly(x,y,l*sc,a,{w:(l>100?30:20)*sc,hw:(l>100?58:42)*sc,hl:(l>100?40:28)*sc,c:ARW,sw:3,cls:'ca',dl:(i%5)*0.3})).join('').replace(/animation-delay/g,`animation-duration:${(3-1.6*kc).toFixed(2)}s;animation-delay`)+'</g>';
-    s+=T(985,750,C.run<1?`（冷房 弱運転）`:MM.m8?`（冷房 ${C.Seff}℃・下げすぎない）`:`（冷房 ${Q.S}℃・${ACMODE==='24h'?'24時間':'日中のみ'}）`,{s:22,c:MM.m8?'#2E7D4F':'#4A5A5F',b:1});
+    s+=T(985,750,C.run<1?`（冷房 弱運転）`:MM.m8?`（冷房 ${C.Seff}℃・下げすぎない）`:`（冷房 ${Q.S}℃・${ACMN[ACMODE]}）`,{s:22,c:MM.m8?'#2E7D4F':'#4A5A5F',b:1});
     s+=coldL(705,815,745,815,Z.wall.t)+coldL(740,815,740,980,Z.wall.t)+coldL(1535,581,1440,581,Z.ceil.t)+coldL(1535,581,1535,670,Z.ceil.t)+coldL(880,581,1360,581,Z.ceil.t+1,1)+coldL(1535,738,1535,905,Z.wall.t)+coldL(1535,1135,1535,940,Z.wall.t)+coldL(940,1140,1320,1140,Z.floor.t,1);
     {const su=SEA==='7'&&!((typeof CLIM_ON==='undefined')||!CLIM_ON)||(((typeof CLIM_ON==='undefined')||!CLIM_ON)&&Q.T>=29);const k=Math.max(0,Math.min(1,(Q.T-C.Seff)/7))*C.run;const x2=705-(273*(0.3+0.7*k));
      if(MM.m7)s+=`<polyline points="502,1270 502,1288 360,1288" fill="none" stroke="#2E7D4F" stroke-width="5"/><g class="lg">`+T(430,1312,'ドレン排水処理',{s:19,c:'#2E7D4F',b:1})+`</g>`;
@@ -505,7 +508,7 @@ function f3draw(){
   // panel
   $('oqT').textContent=Q.T+'℃';$('oqR').textContent=Q.R+'%';$('oqS').textContent=Q.S+'℃';$('qS').disabled=false;
   $('oqD').textContent=C.dpo.toFixed(1)+'℃';$('oqX').textContent=(622*C.po/(101.325-C.po)).toFixed(1)+'g/kg';
-  $('f3list').innerHTML=[{n:'外気（建物外）',t:Q.T,r:Q.R,o:1},Z.room,Z.ceil,Z.wall,Z.floor].map(z=>{const tc=tCol(z.t),rc=z.r>=80?'#7B3FA0':rCol(Math.min(z.r,100));const zb=z.o?null:ZB[z.k],bd='',pv='',pre=anyM&&zb&&(Math.abs(zb.r-z.r)>=0.5||Math.abs(zb.t-z.t)>=0.1)?`<span class="pre">改善策前　温度 ${zb.t.toFixed(1)}℃　露点 ${dp(Math.min(zb.p,ps(zb.t))).toFixed(1)}℃　相対湿度 ${rhT(zb.r)}</span>`:'';const sn=z.o?'外気（建物外）':z.n.replace('（非居住空間）','（非居住）').replace('（居住空間）','（居住）');return`<div title="${z.n}" style="background:#fff;color:#1D2B30;border:1px solid #DDE3E0;border-left:5px solid ${z.o?'#0F7C8C':z.r>=80?'#7B3FA0':'#DDE3E0'}"><span>${sn}</span><span class="cs" style="display:flex;gap:4px">${bd}<b style="background:${tc};color:${ink(tc)};border-radius:6px;padding:0 6px">${z.t.toFixed(1)}℃</b><b title="露点" style="background:#EAF2F8;color:#1F5F99;border-radius:6px;padding:0 6px;font-weight:600">露${dp(Math.min(z.p!=null?z.p:z.r/100*ps(z.t),ps(z.t))).toFixed(1)}</b><b style="background:${rc};color:${ink(rc)};border-radius:6px;padding:0 6px">${rhT(z.r)}${pv}</b>${DH&&!z.o?`<b title="1日のうち相対湿度80%以上の時間" style="background:${DH[z.k]>=12?'#7B3FA0':DH[z.k]>0?'#C9A0DC':'#EEF2EF'};color:${DH[z.k]>=12?'#fff':'#1D2B30'};border-radius:6px;padding:0 6px;min-width:3.2em;text-align:center">${DH[z.k]}h</b>`:(DH?'<b style="min-width:3.2em"></b>':'')}${z.meas?'<i style="font-style:normal;font-size:10px;color:#0F7C8C;align-self:center">実測</i>':''}</span>${pre}</div>`}).join('')+(DH?'<div style="background:none;border:0;padding:0 2px;font-size:10.5px;color:#566569">左から温度・露点（露）・相対湿度、右端＝1日のうち相対湿度80%以上の時間（その季節・天気の24時間を計算）</div>':'');
+  $('f3list').innerHTML=[{n:'外気（建物外）',t:Q.T,r:Q.R,o:1},Z.room,Z.ceil,Z.wall,Z.floor].map(z=>{const tc=tCol(z.t),rc=z.r>=80?'#7B3FA0':rCol(Math.min(z.r,100));const zb=z.o?null:ZB[z.k],bd='',pv='',pre=anyM&&zb&&(Math.abs(zb.r-z.r)>=0.5||Math.abs(zb.t-z.t)>=0.1)?`<span class="pre">改善策前　温度 ${zb.t.toFixed(1)}℃　露点 ${dp(Math.min(zb.p,ps(zb.t))).toFixed(1)}℃　相対湿度 ${rhT(zb.r)}</span>`:'';const sn=z.o?'外気':z.n.replace(/（.*）/,'');return`<div title="${z.n}" style="background:#fff;color:#1D2B30;border:1px solid #DDE3E0;border-left:5px solid ${z.o?'#0F7C8C':z.r>=80?'#7B3FA0':'#DDE3E0'}"><span>${sn}</span><span class="cs" style="display:flex;gap:4px">${bd}<b style="background:${tc};color:${ink(tc)};border-radius:6px;padding:0 6px">${z.t.toFixed(1)}℃</b><b title="露点" style="background:#EAF2F8;color:#1F5F99;border-radius:6px;padding:0 6px;font-weight:600">露${dp(Math.min(z.p!=null?z.p:z.r/100*ps(z.t),ps(z.t))).toFixed(1)}</b><b style="background:${rc};color:${ink(rc)};border-radius:6px;padding:0 6px">${rhT(z.r)}${pv}</b>${DH?strip(DH.S[z.o?'out':z.k],z.o?null:DH.AC):''}${DH&&!z.o?`<b title="1日のうち相対湿度80%以上の時間" style="background:${DH[z.k]>=12?'#7B3FA0':DH[z.k]>0?'#C9A0DC':'#EEF2EF'};color:${DH[z.k]>=12?'#fff':'#1D2B30'};border-radius:6px;padding:0 6px;min-width:3.2em;text-align:center">${DH[z.k]}h</b>`:(DH?'<b style="min-width:3.2em"></b>':'')}${z.meas?'<i style="font-style:normal;font-size:10px;color:#0F7C8C;align-self:center">実測</i>':''}</span>${pre}</div>`}).join('')+(DH?'<div style="background:none;border:0;padding:0 2px;font-size:10.5px;color:#566569">室内＝居住空間、天井裏・壁内・床下＝非居住空間。左から温度・露点（露）・相対湿度、24時間の相対湿度（0〜24時、紫＝80%以上、下の水色線＝冷房運転中）、80%以上の時間（その季節・天気の24時間を計算）</div>':'');
   const n=C.Z.filter(z=>z.r>=80).length, on=[C.f1,C.f2,C.f3].filter(Boolean).length;
   let ex='<b>【上記の解説】</b>';
   const durLine=DH?`<br><b>1日のうち相対湿度80%以上：</b>天井裏${DH.ceil}時間・壁内${DH.wall}時間・床下${DH.floor}時間${Math.max(DH.ceil,DH.wall,DH.floor)>=12?'（長時間続くためカビが発生しやすい）':Math.max(DH.ceil,DH.wall,DH.floor)>0?'（時間帯によってカビ生育域に入る）':''}`:'';
@@ -515,7 +518,7 @@ function f3draw(){
   if(coastOn())ex+='<br>海沿い：潮風で外気の水蒸気量（絶対湿度）が那覇平年値より約5%多く、気温の日較差も小さい想定。飛来塩分は相対湿度約75%で水分を吸って（潮解）表面を湿らせるため、外気に触れる床下・壁内は80%未満でも湿りやすい。';
   if(C.rad>0)ex+=($('proof').checked?`<br>夜間放射冷却：屋上（屋根）に断熱がないため、屋根面が夜空へ熱を放出し、天井裏の表面が約${C.rad.toFixed(1)}℃冷えてしまう（快晴ほど大きい）。`:`<br>夜間放射冷却：屋上（屋根）断熱により影響は小さい（天井裏の表面で約${C.rad.toFixed(1)}℃）。`);
   ex+=!C.f1?'<br>①第3種換気なし：負圧にならず、すき間からの漏気はほとんど生じない（床下換気口の自然換気のみ）。':C.via?`<br>①負圧で露点${C.dpo.toFixed(1)}℃の外気を引き込み、${C.pv?'壁内・天井裏・床下':'給気口まわりから壁内・天井裏'}に通してしまう。`:C.M.m6?'<br>①室内は負圧になるが、隙間の気密処理で漏気はほぼ止まる。':!C.pg0?'<br>①室内は負圧になるが、外気の通り道となる隙間がなく、非居住空間には入りにくい。':'<br>①室内は負圧になるが、外気の入口（床下換気口・気密処理不足の貫通部）がなく、非居住空間には入りにくい。';
-  if(C.f2&&!C.coolOn)ex+=(C.run>0&&!C.acHour?'<br>②冷房は日中のみ（9〜18時）運転の設定のため、この時間帯は停止している想定。':C.run>0?`<br>②外気温（${Q.T}℃）が冷房の設定温度（${C.Seff}℃）より十分低いため、冷房は運転していない想定。`:'<br>②エアコンは設置されているが、この季節・時間帯は冷房を使わない想定（冷房の設定温度を動かすと運転する想定に切り替わる）。');
+  if(C.f2&&!C.coolOn)ex+=(C.run>0&&!C.acHour?`<br>②冷房は${ACMNL[ACMODE]}運転の設定のため、この時間帯は停止している想定。`:C.run>0?`<br>②外気温（${Q.T}℃）が冷房の設定温度（${C.Seff}℃）より十分低いため、冷房は運転していない想定。`:'<br>②エアコンは設置されているが、この季節・時間帯は冷房を使わない想定（冷房の設定温度を動かすと運転する想定に切り替わる）。');
   if(C.coolOn)ex+=(C.run<1?'<br>②冷房は弱運転（春・秋）。':'')+`<br>②冷房で仕上げ材の裏が${Math.min(...C.Z.filter(z=>z.k!=='room').map(z=>z.t)).toFixed(1)}℃前後まで冷え、飽和水蒸気圧が下がってしまう。`;
   if(C.f3)ex+=!C.f3e?'<br>③換気口・貫通部は見直し済み。':C.via?`<br>③大きすぎる換気口・気密処理不足が負圧と重なり、局所的に湿気を取り込んでしまう。`:!C.f1?'<br>③大きすぎる換気口・気密処理不足はあるが、第3種換気による負圧がないため、湿気の取り込みは床下換気口の自然換気程度にとどまる。':'<br>③大きすぎる換気口・気密処理不足はあるが、外気の通り道となる隙間がないため、局所的な湿気の取り込みは起きにくい。';
   if(!on)ex+='<br>どの要因もない状態です。①〜③を1つずつ入れて、どこから危険域に入るか確かめてください。';
@@ -545,6 +548,7 @@ function f3draw(){
 const CLIM={4:{mean:21.5,max:24.3,min:19.1,e:1.95,rh:75},7:{mean:29.1,max:31.9,min:27.0,e:3.11,rh:78},10:{mean:25.5,max:28.1,min:23.5,e:2.35,rh:72},1:{mean:17.3,max:19.8,min:14.9,e:1.33,rh:66}};
 let WX='avg';const WXN={avg:'平年（平均）',sun:'快晴',cloud:'曇り',rain:'雨'};
 let SEA='7',TIM='day',CLIM_ON=true,ACMAN=false,ACMODE='24h';
+const ACMN={short:'0〜数時間',day:'日中のみ',night:'夜のみ','24h':'24時間'},ACMNL={short:'0〜数時間（14〜16時の約2時間と想定）',day:'日中のみ（9〜18時）',night:'夜のみ（18〜6時）','24h':'24時間'};
 const coastOn=()=>!!($('pcoast')&&$('pcoast').checked);
 function applyClim(){const c=CLIM[SEA];const cf=coastOn()?0.8:1;const base=c.mean+((TIM==='am'?c.min+0.3:TIM==='day'?c.max:c.mean-0.5)-c.mean)*cf;let T=base,e=c.e*(coastOn()?1.05:1),R=null;
   if(WX==='sun'){T=TIM==='am'?c.min-0.5:TIM==='day'?c.max+1.0:c.mean-0.8}
@@ -574,10 +578,10 @@ function buildReport1(){
   const sv=$('f3svg').cloneNode(true);sv.removeAttribute('id');sv.setAttribute('width','100%');
   const st=sv.querySelector('style');if(st)st.textContent+='.ca,.flow,.cold,.vap{animation:none!important;opacity:1!important}.mold{animation:none!important}';
   const rows=[['外気（建物外）',{t:Q.T,r:Q.R,p:C.po},null],['室内（居住空間）',Z.room,ZB.room],['天井裏（非居住空間）',Z.ceil,ZB.ceil],['壁内（非居住空間）',Z.wall,ZB.wall],['床下（非居住空間）',Z.floor,ZB.floor]];
-  const zt=rows.map(([n,z,b])=>`<tr><td>${n}</td><td>${z.t.toFixed(1)}℃</td><td style="${z.r>=80?'background:#7B3FA0;color:#fff;font-weight:700':''}">${z.r>=100?'結露（100%）':rhT(z.r)}</td><td>${dp(Math.min(z.p,ps(z.t))).toFixed(1)}℃</td><td>${anyM&&b?`${b.t.toFixed(1)}℃・${dp(Math.min(b.p,ps(b.t))).toFixed(1)}℃・${rhT(b.r)}`:'—'}</td><td>${(window.__DH&&z.k)?window.__DH[z.k]+'時間':'—'}</td></tr>`).join('');
+  const zt=rows.map(([n,z,b])=>`<tr><td>${n}</td><td>${z.t.toFixed(1)}℃</td><td style="${z.r>=80?'background:#7B3FA0;color:#fff;font-weight:700':''}">${z.r>=100?'結露（100%）':rhT(z.r)}</td><td>${dp(Math.min(z.p,ps(z.t))).toFixed(1)}℃</td><td>${anyM&&b?`${b.t.toFixed(1)}℃・${dp(Math.min(b.p,ps(b.t))).toFixed(1)}℃・${rhT(b.r)}`:'—'}</td><td>${window.__DH?strip(window.__DH.S[z.k||'out'],z.k?window.__DH.AC:null).replace('class="hs"','class="hs" style="width:80px;height:16px"'):'—'}</td><td>${(window.__DH&&z.k)?window.__DH[z.k]+'時間':'—'}</td></tr>`).join('');
   const ORD=[8,5,7,6,9,2,3,4,1];
   const mt=ORD.map(i=>`<tr class="${MM['m'+i]?'on':''}"><td>${ck(MM['m'+i])} ${GOAL[i-1]}</td><td>${HOW[i-1]}</td></tr>`).join('');
-  const cond=[['判定に使った値',measOn()?`実測値（${$('mdt').value||'測定日時 未入力'}${$('mloc').value?'・'+$('mloc').value:''}）※空欄の測定点は計算値`:'計算値（教育用の概算モデル）'],['季節・時間帯',CLIM_ON?`沖縄本島 ${MN[SEA]} ${TN[TIM]}・${WXN[WX]}（那覇平年値の目安）`:`手動設定（基準：沖縄本島 ${MN[SEA]} ${TN[TIM]}・${WXN[WX]}、外気を手動で変更）`],['外気',`${Q.T}℃・${Q.R}%（露点 ${C.dpo.toFixed(1)}℃、水蒸気量（絶対湿度） ${(622*C.po/(101.325-C.po)).toFixed(1)}g/kg）`],['冷房',C.f2?(C.coolOn?`設定 ${C.Seff}℃${C.run<1?'（弱運転）':''}／${ACMODE==='24h'?'24時間運転':'日中のみ運転（9〜18時）'}`:`設置有り・この時間帯は運転なし（${ACMODE==='24h'?'24時間運転':'日中のみ運転'}の設定）`):'無し'],
+  const cond=[['判定に使った値',measOn()?`実測値（${$('mdt').value||'測定日時 未入力'}${$('mloc').value?'・'+$('mloc').value:''}）※空欄の測定点は計算値`:'計算値（教育用の概算モデル）'],['季節・時間帯',CLIM_ON?`沖縄本島 ${MN[SEA]} ${TN[TIM]}・${WXN[WX]}（那覇平年値の目安）`:`手動設定（基準：沖縄本島 ${MN[SEA]} ${TN[TIM]}・${WXN[WX]}、外気を手動で変更）`],['外気',`${Q.T}℃・${Q.R}%（露点 ${C.dpo.toFixed(1)}℃、水蒸気量（絶対湿度） ${(622*C.po/(101.325-C.po)).toFixed(1)}g/kg）`],['冷房',C.f2?(C.coolOn?`設定 ${C.Seff}℃${C.run<1?'（弱運転）':''}／${ACMNL[ACMODE]}運転`:`設置有り・この時間帯は運転なし（${ACMNL[ACMODE]}運転の設定）`):'無し'],
     ['主な３つの要因',`${ck(C.f1)} ①第3種換気（負圧）ON　${ck(C.f2)} ②エアコン（冷房）ON　${ck(C.f3)} ③環境変化とのミスマッチ可能性有り`],
     ['建物の条件',`床下換気口${yn(on('pv'))}／隙間からの漏気${yn(on('pg'))}／床材の透湿性${yn(on('pf'))}／壁天井面クロスの透湿性${yn(on('pw'))}／給気口面積が小さい：${on('psm')?'該当':'非該当'}／海沿い：${coastOn()?'該当':'非該当'}／屋上（屋根）の断熱：${$('proof').checked?'なし':'あり'}／新築後1年内又は床下の土間が常に湿っている：${$('pnew').checked?'該当':'非該当'}`]];
   const ct=cond.map(([a,b])=>`<tr><th>${a}</th><td>${b}</td></tr>`).join('');
@@ -585,7 +589,7 @@ function buildReport1(){
   w.innerHTML=`<div class="rh"><div class="rt">カビ被害増加の主な要因と改善策（沖縄エリア）</div><div class="rd">出力日：${repDate()}</div></div>
    <div class="rfig"></div>
    <h4>設定条件</h4><table class="rtab">${ct}</table>
-   <div class="two"><div><h4>各空間の状態</h4><table class="rtab zt"><tr><th>空間</th><th>温度</th><th>相対湿度</th><th>露点</th><th>改善策前（温度・露点・湿度）</th><th>80%以上/日</th></tr>${zt}</table><p class="rnote">紫＝相対湿度80%以上（カビ発生危険域の目安）</p></div>
+   <div class="two"><div><h4>各空間の状態</h4><table class="rtab zt"><tr><th>空間</th><th>温度</th><th>相対湿度</th><th>露点</th><th>改善策前（温度・露点・湿度）</th><th>24時間の相対湿度</th><th>80%以上/日</th></tr>${zt}</table><p class="rnote">紫＝相対湿度80%以上（カビ発生危険域の目安）</p></div>
    <div><h4>解説</h4><div class="rex">${$('f3ex').innerHTML}</div></div></div>
    <h4>改善策（実施し易い順）と具体策　<span class="rsub">☑＝図に反映した改善策／費用・期間の目安と注意点は別紙</span></h4><table class="rtab mt"><tr><th>改善策</th><th>具体策</th></tr>${mt}</table>
    <p class="rsrc">${(document.querySelector('#lab3 .src3')||{}).innerHTML||''}</p>`;
